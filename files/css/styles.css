@@ -1,0 +1,14 @@
+div.container {
+  padding: 2rem;
+}
+
+span#today {
+  color: darkred;
+}
+
+footer {
+  padding: 2rem;
+  margin-left: 2rem;
+  color: white;
+  background-color: darkgray;
+}
