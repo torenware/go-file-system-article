@@ -6,14 +6,14 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
-	"os"
 )
 
 //go:embed files
 var embeddedFiles embed.FS
 
 func main() {
-	filesDir := os.DirFS("files")
+	// Here's a "safe" embed example
+	filesDir := embeddedFiles
 
 	listFiles("", filesDir, ".")
 
