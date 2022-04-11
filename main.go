@@ -6,28 +6,25 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 )
 
 //go:embed files
 var embeddedFiles embed.FS
 
 func main() {
-	filesDir := embeddedFiles
+	filesDir := os.DirFS("files")
 
-	// BUT... note we need to adjust where the "top"
-	// of the file system is, as so:
-	adjustedDir, err := fs.Sub(filesDir, "files")
-	if err != nil {
-		log.Fatal(err)
-	}
+	listFiles("", filesDir, ".")
 
-	listFiles("", adjustedDir, ".")
-
-	handler := http.FileServer(http.FS(adjustedDir))
+	// Use a bit of middleware to filter out
+	// dot files (see below)
+	handler := wrappedFileServer(filesDir)
 	http.Handle("/", handler)
 
 	log.Println("Serving static files at :5000")
-	err = http.ListenAndServe(":5000", handler)
+	err := http.ListenAndServe(":5000", handler)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -54,4 +51,31 @@ func listFiles(indent string, dir fs.FS, path string) error {
 		}
 	}
 	return nil
+}
+
+// Wrap file server and block dot files from appearing
+func wrappedFileServer(root fs.FS) http.Handler {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		url := r.URL.Path
+		// strip off the initial / if it's there
+		if len(url) > 0 && url[:1] == "/" {
+			url = url[1:]
+		}
+		path := strings.Split(url, "/")
+
+		for _, stem := range path {
+			// If it's a dot file, make it unseen
+			if len(stem) > 0 && stem[:1] == "." {
+				http.NotFound(w, r)
+				return
+			}
+		}
+		// We're using fs.FS and not http.FileSystem, so convert
+		// with http.FS:
+		fileServer := http.StripPrefix("/", http.FileServer(http.FS(root)))
+		// and dispatch our approved files to that handler
+		fileServer.ServeHTTP(w, r)
+	}
+
+	return http.HandlerFunc(handler)
 }
