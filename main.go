@@ -15,13 +15,20 @@ func main() {
 	// Here's a "safe" embed example
 	filesDir := embeddedFiles
 
-	listFiles("", filesDir, ".")
+	// BUT... note we need to adjust where the "top"
+	// of the file system is, as so:
+	adjustedDir, err := fs.Sub(filesDir, "files")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	handler := http.FileServer(http.FS(filesDir))
+	listFiles("", adjustedDir, ".")
+
+	handler := http.FileServer(http.FS(adjustedDir))
 	http.Handle("/", handler)
 
 	log.Println("Serving static files at :5000")
-	err := http.ListenAndServe(":5000", handler)
+	err = http.ListenAndServe(":5000", handler)
 	if err != nil {
 		log.Fatal(err)
 	}
