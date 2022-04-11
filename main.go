@@ -8,11 +8,12 @@ import (
 	"net/http"
 )
 
-//go:embed files
+// DON'T DO THIS KIDS!!
+//go:embed files/*
 var embeddedFiles embed.FS
 
 func main() {
-	// Here's a "safe" embed example
+	// Here's an "unsafe" embed example via misconfiguration.
 	filesDir := embeddedFiles
 
 	// BUT... note we need to adjust where the "top"
