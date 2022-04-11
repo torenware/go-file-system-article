@@ -8,8 +8,7 @@ import (
 	"net/http"
 )
 
-// DON'T DO THIS KIDS!!
-//go:embed files/*
+//go:embed files
 var embeddedFiles embed.FS
 
 func main() {
