@@ -12,7 +12,6 @@ import (
 var embeddedFiles embed.FS
 
 func main() {
-	// Here's an "unsafe" embed example via misconfiguration.
 	filesDir := embeddedFiles
 
 	// BUT... note we need to adjust where the "top"
