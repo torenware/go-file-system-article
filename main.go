@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -14,7 +15,7 @@ import (
 var embeddedFiles embed.FS
 
 func main() {
-	filesDir := embeddedFiles
+	filesDir := os.DirFS("files")
 
 	// Make sure that directory listings
 	// won't happen by making a directory
@@ -23,10 +24,12 @@ func main() {
 		fs: filesDir,
 	}
 
-	// Use a bit of middleware to filter out
-	// dot files (see below)
-	handler := wrappedFileServer(filteredDir)
-	http.Handle("/", handler)
+	// We've put our dot file filtering logic
+	// into the file system code itself, so we
+	// can now use http.FileServer directly w/o
+	// the middleware:
+	handler := http.FileServer(http.FS(filteredDir))
+	http.Handle("/", http.StripPrefix("/", handler))
 
 	log.Println("Serving static files at :5000")
 	err := http.ListenAndServe(":5000", handler)
@@ -106,6 +109,14 @@ func (wrapper FilteringFS) Open(name string) (fs.File, error) {
 	s, err := f.Stat()
 	if err != nil {
 		return nil, err
+	}
+
+	// prevent forbidden dotfiles or directories here.
+	// We allow a single dot because it turns out
+	// this is how the standard implementation of Open
+	// deals with a bare "/" directory.
+	if len(name) > 1 && name[:1] == "." {
+		return nil, fs.ErrNotExist
 	}
 
 	if s.IsDir() {
