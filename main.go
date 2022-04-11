@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -16,11 +17,16 @@ var embeddedFiles embed.FS
 func main() {
 	filesDir := os.DirFS("files")
 
-	listFiles("", filesDir, ".")
+	// Make sure that directory listings
+	// won't happen by making a directory
+	// listable only via an index.html file:
+	filteredDir := FilteringFS{
+		fs: filesDir,
+	}
 
 	// Use a bit of middleware to filter out
 	// dot files (see below)
-	handler := wrappedFileServer(filesDir)
+	handler := wrappedFileServer(filteredDir)
 	http.Handle("/", handler)
 
 	log.Println("Serving static files at :5000")
@@ -78,4 +84,43 @@ func wrappedFileServer(root fs.FS) http.Handler {
 	}
 
 	return http.HandlerFunc(handler)
+}
+
+// To block access to directory listings, wrap our file system
+// with another filesystem that blocks them.
+
+type FilteringFS struct {
+	fs fs.FS
+}
+
+// And make the wrapper into an fs.FS by implementing its
+// interface.
+//
+// This is updated from Alex Edward's article from 2018:
+// @see https://www.alexedwards.net/blog/disable-http-fileserver-directory-listings
+func (wrapper FilteringFS) Open(name string) (fs.File, error) {
+	f, err := wrapper.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	if s.IsDir() {
+		// Have an index file or go home!
+		index := filepath.Join(name, "index.html")
+		if _, err := wrapper.fs.Open(index); err != nil {
+			closeErr := f.Close()
+			if closeErr != nil {
+				return nil, closeErr
+			}
+
+			return nil, err
+		}
+	}
+
+	return f, nil
 }
