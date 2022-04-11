@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -15,7 +14,7 @@ import (
 var embeddedFiles embed.FS
 
 func main() {
-	filesDir := os.DirFS("files")
+	filesDir := embeddedFiles
 
 	// Make sure that directory listings
 	// won't happen by making a directory
